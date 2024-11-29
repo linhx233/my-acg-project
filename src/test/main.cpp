@@ -54,8 +54,8 @@ void bouncing_spheres(){
     camera cam;
 
     cam.aspect_ratio      = 16.0 / 9.0;
-    cam.image_width       = 1200;
-    cam.samples_per_pixel = 1000;
+    cam.image_width       = 400;
+    cam.samples_per_pixel = 100;
     cam.max_depth         = 20;
 
     cam.vfov     = 20;
@@ -93,6 +93,27 @@ void checkered_spheres() {
 
     cam.render(world);
 }
+void earth() {
+    auto earth_texture = make_shared<image_texture>("../../images/earthmap.jpg");
+    auto earth_surface = make_shared<lambertian>(earth_texture);
+    auto globe = make_shared<sphere>(point3(0,0,0), 2, earth_surface);
+
+    camera cam;
+
+    cam.aspect_ratio      = 16.0 / 9.0;
+    cam.image_width       = 400;
+    cam.samples_per_pixel = 100;
+    cam.max_depth         = 50;
+
+    cam.vfov     = 20;
+    cam.position = point3(0,3,-12);
+    cam.lookat   = point3(0,0,0);
+    cam.vup      = vec3(0,1,0);
+
+    cam.defocus_angle = 0;
+
+    cam.render(hittable_list(globe));
+}
 
 int main(int argc, char **argv) {
     srand(time(0));
@@ -108,9 +129,10 @@ int main(int argc, char **argv) {
     }
     freopen(OUT_FILE_PATH,"w",stdout);
 
-    switch(1){
-        case 1: bouncing_spheres();
-        // case 2: checkered_spheres();
+    switch(3){
+        case 1: bouncing_spheres(); break;
+        case 2: checkered_spheres(); break;
+        case 3: earth(); break;
     }
     return 0;
 }

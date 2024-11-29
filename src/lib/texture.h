@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include<memory>
+#include "rtw_stb_image.h"
 
 using std::shared_ptr;
 using std::make_shared;
@@ -39,6 +40,21 @@ class checker_texture: public texture{
   private:
     double inv_scale;
     shared_ptr<texture> texture_even,texture_odd;
+};
+
+class image_texture: public texture{
+  public:
+    image_texture(const char* filename): image(filename){}
+	
+    color value(double u, double v, const point3& p)const override{
+        if(image.height()<=0)return color(0,1,1);
+		u=u>1?1:(u<0?0:u),v=v>1?1:(v<0?0:v);
+        int i=u*image.width(),j=(1-v)*image.height();
+        auto pixel=image.pixel_data(i,j);
+        return color(pixel[0],pixel[1],pixel[2])/255;
+    }
+  private:
+    rtw_image image;
 };
 
 #endif
