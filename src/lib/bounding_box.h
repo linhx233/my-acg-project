@@ -8,16 +8,18 @@ class bounding_box{
     interval x,y,z;
 
     bounding_box(){}
-    bounding_box(const interval& x,const interval& y, const interval &z): x(x), y(y), z(z){}
+    bounding_box(const interval& x,const interval& y, const interval &z): x(x), y(y), z(z){ pad();}
     bounding_box(const point3& a,const point3& b){
         x=a.x()<b.x()?interval(a.x(),b.x()):interval(b.x(),a.x());
         y=a.y()<b.y()?interval(a.y(),b.y()):interval(b.y(),a.y());
         z=a.z()<b.z()?interval(a.z(),b.z()):interval(b.z(),a.z());
+        pad();
     }
     bounding_box(const bounding_box& a,const bounding_box& b){
         x=bounding_interval(a.x,b.x);
         y=bounding_interval(a.y,b.y);
         z=bounding_interval(a.z,b.z);
+        pad();
     }
 
     inline interval intersect_x(const ray& r)const{
@@ -51,9 +53,17 @@ class bounding_box{
               <std::min(std::min(ray_t.max,rx.max), std::min(ry.max,rz.max));
     }
     static const bounding_box empty, universe;
+  private:
+    static const double eps;
+    void pad(){
+        if(x.size()<eps)x.expand(eps);
+        if(y.size()<eps)y.expand(eps);
+        if(z.size()<eps)z.expand(eps);
+    }
 };
 
 const bounding_box bounding_box::empty=bounding_box(interval::empty,interval::empty,interval::empty);
 const bounding_box bounding_box::universe=bounding_box(interval::universe,interval::universe,interval::universe);
+const double bounding_box::eps=1e-6;
 
 #endif

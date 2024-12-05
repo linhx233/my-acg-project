@@ -4,8 +4,6 @@
 #include "hittable.h"
 #include "common.h"
 
-class material;
-
 class sphere: public hittable{
   public:
     sphere(const point3& center, double radius, std::shared_ptr<material> mat): 

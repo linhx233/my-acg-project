@@ -3,18 +3,19 @@
 
 class interval{
   public:
-    double min,max;
+	double min,max;
 
-    interval(): min(+infty),max(-infty){}
-    interval(double min, double max): min(min), max(max){}
+	interval(): min(+infty),max(-infty){}
+	interval(double min, double max): min(min), max(max){}
 
-    inline double size()const{ return max-min;}
-    inline bool contains(double x)const{ return min<=x&&x<=max;}
-    inline bool surrounds(double x)const{ return min<x&&x<max;}
-    inline double clamp(double x)const{ return x<min?min:(x>max?max:x);}
+	inline double size()const{ return max-min;}
+	inline bool contains(double x)const{ return min<=x&&x<=max;}
+	inline bool surrounds(double x)const{ return min<x&&x<max;}
+	inline double clamp(double x)const{ return x<min?min:(x>max?max:x);}
 	inline double midpoint()const{ return (min+max)*0.5;}
+	inline void expand(double x){min-=x/2,max+=x/2;}
 
-    static const interval empty, universe, ratio;
+	static const interval empty, universe, ratio;
 };
 
 const interval interval::empty=interval(+infty, -infty);

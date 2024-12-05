@@ -11,6 +11,7 @@ class camera{
     int image_width;
     int samples_per_pixel;
     int max_depth;
+    color background;
 
     double vfov;
     point3 position;
@@ -23,6 +24,7 @@ class camera{
            double aspect_ratio=1.0, 
            int samples_per_pixel=10, 
            int max_depth=10, 
+           color background=color(0,0,0),
            double vfov=90,
            point3 position=point3(0,0,0),
            point3 lookat=point3(0,0,-1),
@@ -33,6 +35,7 @@ class camera{
         aspect_ratio(aspect_ratio), 
         samples_per_pixel(samples_per_pixel),
         max_depth(max_depth),
+        background(background),
         vfov(vfov),
         position(position),
         lookat(lookat),
@@ -111,14 +114,12 @@ class camera{
         if(obj.hit(r,interval(err,infty),rec)){
             color attenuation;
             ray scattered;
+            color emitted=rec.mat->emit(rec.u,rec.v,rec.p);
             if(rec.mat->scatter(r,rec,attenuation,scattered))
-                return attenuation*ray_color(scattered,obj,depth-1);
-            return color(0,0,0);
+                return attenuation*ray_color(scattered,obj,depth-1)+emitted;
+            return emitted;
         }
-    
-        vec3 unit_direction = normalize(r.direction());
-        auto a = 0.5*(unit_direction.y() + 1.0);
-        return (1.0-a)*color(1.0, 1.0, 1.0) + a*color(0.5, 0.7, 1.0);
+        return background;
     }
 };
 

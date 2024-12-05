@@ -7,10 +7,11 @@
 class material{
   public:
     virtual ~material()=default;
-    virtual bool scatter(const ray& ray_in, const hit_record& rec, color& attenuation, ray& ray_out)const = 0;
+    virtual bool scatter(const ray& ray_in, const hit_record& rec, color& attenuation, ray& ray_out)const{return 0;};
+    virtual color emit(double u, double v, const point3& p)const{return color(0,0,0);}
 };
 
-class lambertian:public material{
+class lambertian: public material{
   public:
     lambertian(color albedo): tex(make_shared<solid_color>(solid_color(albedo))){}
     lambertian(const shared_ptr<texture>& tex): tex(tex){}
@@ -28,9 +29,9 @@ class lambertian:public material{
 };
 
 
-class mirror:public material{
+class mirror: public material{
   public:
-    mirror(color albedo):albedo(albedo){}
+    mirror(color albedo): albedo(albedo){}
     bool scatter(const ray& ray_in, const hit_record& rec, color& attenuation, ray& ray_out)const override{
         ray_out=ray(rec.p,reflect(ray_in.direction(),rec.normal),ray_in.time());
         attenuation=albedo;
@@ -40,9 +41,9 @@ class mirror:public material{
     color albedo;
 };
 
-class metal:public material{
+class metal: public material{
   public:
-    metal(color albedo, double fuzz):albedo(albedo), fuzz(fuzz){}
+    metal(color albedo, double fuzz): albedo(albedo), fuzz(fuzz){}
     bool scatter(const ray& ray_in, const hit_record& rec, color& attenuation, ray& ray_out)const override{
         vec3 new_direction=normalize(reflect(ray_in.direction(),rec.normal))+random_unit_vector()*fuzz;
         ray_out=ray(rec.p,new_direction,ray_in.time());
@@ -54,7 +55,7 @@ class metal:public material{
     double fuzz;
 };
 
-class dielectric:public material{
+class dielectric: public material{
   public:
     dielectric(double refraction_rate, color albedo=color(1.0,1.0,1.0)):
         albedo(albedo),refraction_rate(refraction_rate){}
@@ -68,6 +69,16 @@ class dielectric:public material{
   private:
     color albedo;
     double refraction_rate;
+};
+
+class diffuse_light: public material {
+  public:
+    diffuse_light(shared_ptr<texture> tex): tex(tex){}
+    diffuse_light(const color& emit): tex(make_shared<solid_color>(emit)){}
+
+    color emit(double u, double v, const point3& p)const override{ return tex->value(u, v, p);}
+  private:
+    shared_ptr<texture> tex;
 };
 
 #endif

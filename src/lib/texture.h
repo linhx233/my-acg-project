@@ -4,6 +4,7 @@
 #include "common.h"
 #include<memory>
 #include "rtw_stb_image.h"
+#include "perlin.h"
 
 using std::shared_ptr;
 using std::make_shared;
@@ -55,6 +56,18 @@ class image_texture: public texture{
     }
   private:
     rtw_image image;
+};
+
+class grey_noise_texture: public texture{
+  public:
+    grey_noise_texture(double freq): freq(freq){}
+
+    color value(double u, double v, const point3& p)const override{
+        return color(1,1,1)*(0.5+0.5*sin(freq*p.z()+10*noise.turb(p,7)));
+    }
+  private:
+    double freq;
+    perlin_noise noise;
 };
 
 #endif
