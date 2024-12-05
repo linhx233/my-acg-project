@@ -107,5 +107,21 @@ inline std::ostream& operator<<(std::ostream& out, const mat3& a){
     return out;
 }
 
+inline mat3 rotate_mat_x(const double theta){
+    double cos_t=cos(theta),sin_t=sin(theta);
+    return mat3(1,0,0, 0,cos_t,-sin_t, 0,sin_t,cos_t);
+}
+inline mat3 rotate_mat_y(const double theta){
+    double cos_t=cos(theta),sin_t=sin(theta);
+    return mat3(cos_t,0,sin_t, 0,1,0, -sin_t,0,cos_t);
+}
+inline mat3 rotate_mat_z(const double theta){
+    double cos_t=cos(theta),sin_t=sin(theta);
+    return mat3(cos_t,-sin_t,0, sin_t,cos_t,0, 0,0,1);
+}
+inline mat3 rotate_mat(const double theta_x, const double theta_y, const double theta_z){
+    return rotate_mat_z(theta_z)*rotate_mat_y(theta_y)*rotate_mat_x(theta_x);
+}
+
 
 #endif

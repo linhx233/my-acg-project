@@ -10,13 +10,14 @@ class hittable_list: public hittable{
     std::vector<std::shared_ptr<hittable> > objects;
     hittable_list(){}
     hittable_list(std::shared_ptr<hittable> object){ clear(),add(object);}
+
     inline void add(std::shared_ptr<hittable> object){ 
         objects.push_back(object);
         boundingbox=bounding_box(boundingbox,object->bbox());
     }
     inline void clear(){ objects.clear();}
     
-    bool hit(const ray& r, const interval& ray_t, hit_record& rec)const{
+    bool hit(const ray& r, const interval& ray_t, hit_record& rec)const override{
         bool flag=0;
         hit_record tmp;
         double ctmin=ray_t.max;
@@ -25,7 +26,6 @@ class hittable_list: public hittable{
                 if(tmp.t<ctmin)ctmin=tmp.t,rec=tmp,flag=1;
         return flag;
     }
-
     bounding_box bbox()const override{ return boundingbox;}
   private:
     bounding_box boundingbox;

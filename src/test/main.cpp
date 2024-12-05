@@ -7,6 +7,8 @@
 #include "bvh.h"
 #include "texture.h"
 #include "quad.h"
+#include "make_box.h"
+#include "transformations.h"
 
 void bouncing_spheres(){
     hittable_list scene;
@@ -222,13 +224,23 @@ void cornell_box() {
     world.add(make_shared<quad>(point3(0,0,0), vec3(555,0,0), vec3(0,0,555), white));
     world.add(make_shared<quad>(point3(555,555,555), vec3(-555,0,0), vec3(0,0,-555), white));
     world.add(make_shared<quad>(point3(0,0,555), vec3(555,0,0), vec3(0,555,0), white));
+    
+    shared_ptr<hittable> box1 = make_box(point3(0,0,0), point3(165,330,165), white);
+    box1 = make_shared<rotate>(box1, 0, 15, 0);
+    box1 = make_shared<translate>(box1, vec3(265,0,295));
+    world.add(box1);
+
+    shared_ptr<hittable> box2 = make_box(point3(0,0,0), point3(165,165,165), white);
+    box2 = make_shared<rotate>(box2, 0, -18, 0);
+    box2 = make_shared<translate>(box2, vec3(130,0,65));
+    world.add(box2);
 
     camera cam;
 
     cam.aspect_ratio      = 1.0;
     cam.image_width       = 600;
-    cam.samples_per_pixel = 200;
-    cam.max_depth         = 50;
+    cam.samples_per_pixel = 100;
+    cam.max_depth         = 20;
     cam.background        = color(0,0,0);
 
     cam.vfov     = 40;

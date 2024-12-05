@@ -44,5 +44,6 @@ T trilinear_interpolate(T a[2][2][2], double u, double v,double w){
 #include "color.h"
 #include "ray.h"
 #include "interval.h"
+#include "mat3.h"
 
 #endif

@@ -22,6 +22,39 @@ class bounding_box{
         pad();
     }
 
+    bounding_box translate(const vec3& v){
+        return bounding_box(x.translate(v.x()), y.translate(v.y()), z.translate(v.z()));
+    }
+    bounding_box rotate(const mat3& A){
+        vec3 mn(infty,infty,infty),mx=-mn;
+        for(int i=0;i<2;i++)
+            for(int j=0;j<2;j++)
+                for(int k=0;k<2;k++){
+                    vec3 vertex(i?x.max:x.min,j?y.max:y.min,k?z.max:z.min);
+                    vertex=A*vertex;
+                    if(vertex.x()<mn.x())mn.e0=vertex.e0;
+                    else if(vertex.x()>mx.x())mx.e0=vertex.e0;
+                    if(vertex.y()<mn.y())mn.e1=vertex.e1;
+                    else if(vertex.y()>mx.y())mx.e1=vertex.e1;
+                    if(vertex.z()<mn.z())mn.e2=vertex.e2;
+                    else if(vertex.z()>mx.z())mx.e2=vertex.e2;
+                }
+        return bounding_box(mn,mx);
+    }
+
+    bool hit(const ray& r, const interval& ray_t)const{
+        interval rx=intersect_x(r),ry=intersect_y(r),rz=intersect_z(r);
+        return std::max(std::max(ray_t.min,rx.min), std::max(ry.min,rz.min))
+              <std::min(std::min(ray_t.max,rx.max), std::min(ry.max,rz.max));
+    }
+    static const bounding_box empty, universe;
+  private:
+    static const double eps;
+    void pad(){
+        if(x.size()<eps)x.expand(eps);
+        if(y.size()<eps)y.expand(eps);
+        if(z.size()<eps)z.expand(eps);
+    }
     inline interval intersect_x(const ray& r)const{
         double x0=r.origin().x(),dx=r.direction().x();
         if(abs(dx)>err){
@@ -45,20 +78,6 @@ class bounding_box{
             return t0<t1?interval(t0,t1):interval(t1,t0);
         }
         return z.contains(z0)?interval::universe:interval::empty;
-    }
-
-    bool hit(const ray& r, const interval& ray_t)const{
-        interval rx=intersect_x(r),ry=intersect_y(r),rz=intersect_z(r);
-        return std::max(std::max(ray_t.min,rx.min), std::max(ry.min,rz.min))
-              <std::min(std::min(ray_t.max,rx.max), std::min(ry.max,rz.max));
-    }
-    static const bounding_box empty, universe;
-  private:
-    static const double eps;
-    void pad(){
-        if(x.size()<eps)x.expand(eps);
-        if(y.size()<eps)y.expand(eps);
-        if(z.size()<eps)z.expand(eps);
     }
 };
 

@@ -14,6 +14,7 @@ class interval{
 	inline double clamp(double x)const{ return x<min?min:(x>max?max:x);}
 	inline double midpoint()const{ return (min+max)*0.5;}
 	inline void expand(double x){min-=x/2,max+=x/2;}
+	inline interval translate(const double t)const{return interval(min+t,max+t);}
 
 	static const interval empty, universe, ratio;
 };
