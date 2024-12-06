@@ -257,17 +257,23 @@ int main(int argc, char **argv) {
     srand(time(0));
     // Image
     char* OUT_FILE_PATH="output.ppm";
+    int demo_id=1;
+
     for(int i=1;i<argc;i++){
         std::string arg=argv[i];
         if(arg=="-outfile"){
             if(i==argc-1){std::clog<<"Invalid arguments"<<std::endl;return -1;}
             OUT_FILE_PATH=argv[++i];
         }
+        else if(arg=="-demo"){
+            if(i==argc-1){std::clog<<"Invalid arguments"<<std::endl;return -1;}
+            demo_id=std::stoi(argv[++i]);
+        }
         else{std::clog<<"Invalid arguments"<<std::endl;return -1;}
     }
     freopen(OUT_FILE_PATH,"w",stdout);
 
-    switch(7){
+    switch(demo_id){
         case 1: bouncing_spheres(); break;
         case 2: checkered_spheres(); break;
         case 3: earth(); break; 

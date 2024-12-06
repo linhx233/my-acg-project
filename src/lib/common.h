@@ -6,6 +6,7 @@
 #include<cstdlib>
 #include<float.h>
 #include<memory>
+#include<string>
 
 using std::shared_ptr;
 using std::make_shared;
