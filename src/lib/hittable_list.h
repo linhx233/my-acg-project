@@ -16,7 +16,7 @@ class hittable_list: public hittable{
         boundingbox=bounding_box(boundingbox,object->bbox());
     }
     inline void clear(){ objects.clear();}
-    
+
     bool hit(const ray& r, const interval& ray_t, hit_record& rec)const override{
         bool flag=0;
         hit_record tmp;
@@ -27,6 +27,17 @@ class hittable_list: public hittable{
         return flag;
     }
     bounding_box bbox()const override{ return boundingbox;}
+    double sample_pdf(const ray& r)const override{
+		if(objects.empty())return 1/(4*pi);
+		double accum=0;
+		for(auto object:objects)accum+=object->sample_pdf(r);
+		return accum/objects.size();
+	}
+	vec3 sample(const point3& origin, const double time)const override{
+		if(objects.empty())return random_unit_vector();
+		int i=rand()%objects.size();
+		return objects[i]->sample(origin,time);
+	}
   private:
     bounding_box boundingbox;
 };

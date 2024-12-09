@@ -34,6 +34,19 @@ class bvh_node: public hittable{
         return hit_l||hit_r;
     }
     bounding_box bbox()const override{ return boundingbox;}
+    double sample_pdf(const ray& r)const override{
+        if(!boundingbox.hit(r,interval(err,infty)))return 0;
+        if(lson==nullptr&&rson==nullptr)return 1/(4*pi);
+        if(rson==nullptr)return lson->sample_pdf(r);
+        if(lson==nullptr)return rson->sample_pdf(r);
+        return 0.5*(lson->sample_pdf(r)+rson->sample_pdf(r));
+    }
+    vec3 sample(const point3& origin, const double time)const override{
+        if(lson==nullptr&&rson==nullptr)return random_unit_vector();
+        if(rson==nullptr)return lson->sample(origin,time);
+        if(lson==nullptr)return rson->sample(origin,time);
+        return (rand()%2==0?lson:rson)->sample(origin,time);
+    }
   private:
     std::shared_ptr<hittable> lson,rson;
     bounding_box boundingbox;

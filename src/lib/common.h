@@ -15,7 +15,7 @@ const double infty=1e100;
 const double pi=3.1415926535897932384626433832795;
 const double err=1e-6;
 
-inline double random_double(){ return std::rand()/(RAND_MAX+1.);}
+inline double random_double(){ return (std::rand()/(RAND_MAX+1.)+std::rand())/(RAND_MAX+1.);}
 inline double random_double(double min, double max){ return min+(max-min)*random_double();}
 
 inline double deg_to_rad(double x){ return x/180*pi;}
@@ -46,5 +46,6 @@ T trilinear_interpolate(T a[2][2][2], double u, double v,double w){
 #include "ray.h"
 #include "interval.h"
 #include "mat3.h"
+#include "orthonormal_basis.h"
 
 #endif

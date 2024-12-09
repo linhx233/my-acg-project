@@ -4,6 +4,10 @@
 #include "common.h"
 #include "hittable.h"
 #include "material.h"
+#include "pdf.h"
+
+#include<thread>
+#include<mutex>
 
 class camera{
   public:
@@ -43,35 +47,59 @@ class camera{
         focus_dist(focus_dist),
         defocus_angle(defocus_angle){}
 
-    void render(const hittable& scene){
+    void render(const hittable& scene, const hittable& lights=hittable_list()){
         init();
         
         std::cout<<"P3\n"<<image_width<<' '<<image_height <<"\n255\n";
 
-        for (int j=0;j<image_height;j++){
-            std::clog<<"\rScanlines remaining: "<<(image_height-j)<<' '<<std::flush;
-            for (int i=0;i<image_width;i++){
-                point3 pixel_center=pixel00_loc+j*pixel_delta_v+i*pixel_delta_u;
-                vec3 ray_direction=normalize(pixel_center-center);
-                color pixel_color(0,0,0);
-                for(int T=0;T<samples_per_pixel;T++){
-                    point3 pixel_sample=pixel_center+random_double(-0.5,0.5)*pixel_delta_u
-                                                    +random_double(-0.5,0.5)*pixel_delta_v;
-                    point3 ray_origin=sample_in_defocus_disk();
-                    double ray_time=random_double();
-                    ray r(ray_origin,normalize(pixel_sample-ray_origin),ray_time);
+        int sqrt_spp=ceil(sqrt(samples_per_pixel));
+        int real_spp=sqrt_spp*sqrt_spp;
+        int num_thread=16;
+		std::thread *th = new std::thread[num_thread];
+        int scanlines_remaining=image_height;
+        std::mutex mtx;
+		color *pixel_colors = new color[image_width*image_height];
 
-                    pixel_color+=ray_color(r,scene,max_depth)/samples_per_pixel;
-                }
-                write_color(std::cout,pixel_color);
-            }
-        }
+        auto subprocess = [&](int r) -> void{
+            for (int j=r;j<image_height;j+=num_thread){
+                mtx.lock();
+                std::clog<<"\rScanlines remaining: "<<scanlines_remaining<<' '<<std::flush;
+            	scanlines_remaining--;
+            	mtx.unlock();
+            	for (int i=0;i<image_width;i++){
+            	    point3 pixel_upper_left=viewport_upper_left+j*pixel_delta_v+i*pixel_delta_u;
+            	    color pixel_color(0,0,0);
+            	    for(int si=0;si<sqrt_spp;si++)
+            	        for(int sj=0;sj<sqrt_spp;sj++){
+            		        point3 pixel_sample=pixel_upper_left+(si+random_double())/sqrt_spp*pixel_delta_u
+                                                                +(sj+random_double())/sqrt_spp*pixel_delta_v;
+            	            point3 ray_origin=sample_in_defocus_disk();
+                	        double ray_time=random_double();
+                    	    ray r(ray_origin,normalize(pixel_sample-ray_origin),ray_time);
+
+                        	color raycolor=ray_color(r,scene,lights,2./max_depth,max_depth);
+                    	    if(raycolor.e0!=raycolor.e0)raycolor.e0=0;
+                        	if(raycolor.e1!=raycolor.e1)raycolor.e1=0;
+                        	if(raycolor.e2!=raycolor.e2)raycolor.e2=0;
+                        	pixel_color+=raycolor/real_spp;
+                    	}
+					pixel_colors[j*image_width+i]=pixel_color;
+            	}
+        	}
+        };
+
+		for(int i=0;i<num_thread;i++)th[i]=std::thread(subprocess,i);
+		for(int i=0;i<num_thread;i++)th[i].join();
+        for(int i=0;i<image_height*image_width;i++)
+			write_color(std::cout,pixel_colors[i]);
+		delete[] pixel_colors;
+		delete[] th;
         std::clog << "\rDone.                 \n";
     }
   private:
     int image_height;
     point3 center;
-    point3 pixel00_loc;
+    point3 pixel00_loc,viewport_upper_left;
     vec3 pixel_delta_u, pixel_delta_v;//u horizontal, v vertical
     vec3 u,v,w;
     vec3 defocus_u,defocus_v;
@@ -95,7 +123,7 @@ class camera{
         pixel_delta_u=viewport_u/image_width;
         pixel_delta_v=viewport_v/image_height;
 
-        vec3 viewport_upper_left=center-focus_dist*w-viewport_u/2-viewport_v/2;
+        viewport_upper_left=center-focus_dist*w-viewport_u/2-viewport_v/2;
         pixel00_loc=viewport_upper_left+0.5*(pixel_delta_u+pixel_delta_v);
 
         double defocus_radius=focus_dist*tan(deg_to_rad(defocus_angle)/2);
@@ -108,18 +136,22 @@ class camera{
         return center+x*defocus_u+y*defocus_v;
     }
     
-    color ray_color(const ray& r,const hittable& obj,const int& depth){
+    color ray_color(const ray& r, const hittable& obj, const hittable& lights, const double p, const int depth){
         if(depth<=0)return color(0,0,0);
         hit_record rec;
-        if(obj.hit(r,interval(err,infty),rec)){
-            color attenuation;
-            ray scattered;
-            color emitted=rec.mat->emit(rec.u,rec.v,rec.p);
-            if(rec.mat->scatter(r,rec,attenuation,scattered))
-                return attenuation*ray_color(scattered,obj,depth-1)+emitted;
-            return emitted;
-        }
-        return background;
+        if(!obj.hit(r,interval(err,infty),rec))return background;
+        color attenuation;
+        ray scattered;
+        color emitted=rec.mat->emit(r,rec,rec.u,rec.v,rec.p);
+        double sample_pdf,bsdf;
+        if(!rec.mat->scatter(r,rec,attenuation,scattered,sample_pdf))return emitted;
+        auto light_pdf=make_shared<directed_pdf>(lights, rec.p);
+        auto surface_pdf=make_shared<lambertian_pdf>(rec.normal);
+        mixture_pdf mixture_pdf(light_pdf,surface_pdf,std::max(p,pow(depth,-1.5)));
+        scattered=ray(rec.p,mixture_pdf.sample(),r.time());
+        bsdf=rec.mat->bsdf(r, rec, scattered);
+        sample_pdf=mixture_pdf.value(scattered.direction());
+        return attenuation*bsdf*ray_color(scattered,obj,lights,p,depth-1)/sample_pdf+emitted;
     }
 };
 

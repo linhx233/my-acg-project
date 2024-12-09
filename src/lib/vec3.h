@@ -76,5 +76,10 @@ inline vec3 refract(const vec3& v,const vec3& n,double eta_i_over_t){
 	vec3 rparal=-sqrt(abs(1-rperp.length_squared()))*n;
 	return rperp+rparal;
 }
+inline vec3 random_lambertian_direction(){
+	double phi=random_double()*2*pi;
+	double r=random_double();
+	return vec3(sqrt(r)*cos(phi),sqrt(r)*sin(phi),sqrt(1-r));
+}
 
 #endif

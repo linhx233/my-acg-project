@@ -10,6 +10,7 @@ class sphere: public hittable{
     	center(ray(center,vec3(0,0,0))), radius(std::fmax(0,radius)), mat(mat) {
 			vec3 vecr(radius,radius,radius);
 			boundingbox=bounding_box(center-vecr,center+vecr);
+            area=4*pi*radius*radius;
 		}
 	sphere(const point3& center0, const point3& center1, double radius, std::shared_ptr<material> mat):
     	center(ray(center0,center1-center0)), radius(std::fmax(0,radius)), mat(mat) {
@@ -43,12 +44,28 @@ class sphere: public hittable{
         return 1;
     }
 	bounding_box bbox()const override{ return boundingbox;}
+    double sample_pdf(const ray& r)const override{
+        hit_record rec; ray rt=r;
+        double accum=0;
+        while(hit(rt,interval(err,infty),rec)){
+            double dist_squared=rec.t*rec.t*rt.direction().length_squared();
+            double cos_t=abs(dot(rec.normal,normalize(rt.direction())));
+            accum+=dist_squared/cos_t;
+            rt=ray(rec.p,rt.direction(),rt.time());
+        }
+        return accum/area;
+    }
+    vec3 sample(const point3& origin, double time=0)const override{
+        point3 P=center.at(time)+radius*random_unit_vector();
+        return normalize(P-origin);
+    }
 
   private:
     ray center;
     double radius;
     std::shared_ptr<material> mat;
 	bounding_box boundingbox;
+    double area;
 	static void get_sphere_uv(const point3& p, double& u, double& v) {
         v=acos(-p.y())/pi;
         u=atan2(-p.z(),p.x())/(2*pi)+.5;
