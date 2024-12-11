@@ -5,6 +5,7 @@
 #include "hittable.h"
 #include "material.h"
 #include "pdf.h"
+#include "scatter_record.h"
 
 #include<thread>
 #include<mutex>
@@ -61,6 +62,7 @@ class camera{
 		color *pixel_colors = new color[image_width*image_height];
 
         auto subprocess = [&](int r) -> void{
+			color *pixel_color_buffer = new color[real_spp];
             for (int j=r;j<image_height;j+=num_thread){
                 mtx.lock();
                 std::clog<<"\rScanlines remaining: "<<scanlines_remaining<<' '<<std::flush;
@@ -81,11 +83,13 @@ class camera{
                     	    if(raycolor.e0!=raycolor.e0)raycolor.e0=0;
                         	if(raycolor.e1!=raycolor.e1)raycolor.e1=0;
                         	if(raycolor.e2!=raycolor.e2)raycolor.e2=0;
-                        	pixel_color+=raycolor/real_spp;
+                        	pixel_color_buffer[si*sqrt_spp+sj]=raycolor;
                     	}
-					pixel_colors[j*image_width+i]=pixel_color;
+					pixel_colors[j*image_width+i]=anti_aliasing(pixel_color_buffer,sqrt_spp,sqrt_spp,
+																std::min(8,int(sqrt(sqrt_spp))));
             	}
         	}
+			delete[] pixel_color_buffer;
         };
 
 		for(int i=0;i<num_thread;i++)th[i]=std::thread(subprocess,i);
@@ -140,19 +144,44 @@ class camera{
         if(depth<=0)return color(0,0,0);
         hit_record rec;
         if(!obj.hit(r,interval(err,infty),rec))return background;
-        color attenuation;
-        ray scattered;
+        scatter_record scatter;
+		ray scattered_ray;
         color emitted=rec.mat->emit(r,rec,rec.u,rec.v,rec.p);
         double sample_pdf,bsdf;
-        if(!rec.mat->scatter(r,rec,attenuation,scattered,sample_pdf))return emitted;
+        if(!rec.mat->scatter(r,rec,scatter))return emitted;
+		if(!scatter.using_importance_sampling){
+			scattered_ray=scatter.sample_ray;
+			bsdf=rec.mat->bsdf(r,rec,scattered_ray);
+			return scatter.attenuation*ray_color(scattered_ray,obj,lights,p,depth-1)+emitted;
+		}
         auto light_pdf=make_shared<directed_pdf>(lights, rec.p);
-        auto surface_pdf=make_shared<lambertian_pdf>(rec.normal);
+        auto surface_pdf=scatter.sample_pdf;
         mixture_pdf mixture_pdf(light_pdf,surface_pdf,std::max(p,pow(depth,-1.5)));
-        scattered=ray(rec.p,mixture_pdf.sample(),r.time());
-        bsdf=rec.mat->bsdf(r, rec, scattered);
-        sample_pdf=mixture_pdf.value(scattered.direction());
-        return attenuation*bsdf*ray_color(scattered,obj,lights,p,depth-1)/sample_pdf+emitted;
+        scattered_ray=ray(rec.p,mixture_pdf.sample(),r.time());
+        bsdf=rec.mat->bsdf(r,rec,scattered_ray);
+        sample_pdf=mixture_pdf.value(scattered_ray.direction());
+        return scatter.attenuation*bsdf*ray_color(scattered_ray,obj,lights,p,depth-1)/sample_pdf+emitted;
     }
+
+	color anti_aliasing(color* buffer, int row, int col, int pool_num){
+		int pool_num_r=std::min(pool_num,row),pool_num_c=std::min(pool_num,col);
+		color res(0,0,0);
+		for(int i=0;i<pool_num_r;i++)
+			for(int j=0;j<pool_num_c;j++){
+				int lr=1ll*i*row/pool_num_r,rr=1ll*(i+1)*row/pool_num_r;
+				int lc=1ll*j*col/pool_num_c,rc=1ll*(j+1)*col/pool_num_c;
+				color tmp(0,0,0);
+				for(int si=lr;si<rr;si++)
+					for(int sj=lc;sj<rc;sj++)
+						tmp+=buffer[si*col+sj];
+				tmp/=1ll*(rr-lr)*(rc-lc);
+				if(tmp.e0>1)tmp.e0=1;
+				if(tmp.e1>1)tmp.e1=1;
+				if(tmp.e2>1)tmp.e2=1;
+				res+=tmp*(rr-lr)*(rc-lc);
+			}
+		return res/(row*col);
+	}
 };
 
 #endif 

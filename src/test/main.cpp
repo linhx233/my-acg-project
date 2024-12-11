@@ -11,10 +11,11 @@
 #include "transformations.h"
 
 void bouncing_spheres(){
-    hittable_list scene;
+    hittable_list scene, skybox;
 
     auto checker = make_shared<checker_texture>(0.32, color(.2, .3, .1), color(.9, .9, .9));
     scene.add(make_shared<sphere>(point3(0,-1000,0), 1000, make_shared<lambertian>(checker)));
+    skybox.add(make_shared<sphere>(point3(0,0,0),1e6,nullptr));
 
     for (int a = -11; a < 11; a++) {
         for (int b = -11; b < 11; b++) {
@@ -57,9 +58,9 @@ void bouncing_spheres(){
     camera cam;
 
     cam.aspect_ratio      = 16.0 / 9.0;
-    cam.image_width       = 400;
-    cam.samples_per_pixel = 100;
-    cam.max_depth         = 20;
+    cam.image_width       = 1200;
+    cam.samples_per_pixel = 2000;
+    cam.max_depth         = 30;
     cam.background        = color(0.70, 0.80, 1.00);
 
     cam.vfov     = 20;
@@ -231,16 +232,15 @@ void cornell_box() {
     box1 = make_shared<translate>(box1, vec3(265,0,295));
     world.add(box1);
 
-    shared_ptr<hittable> box2 = make_box(point3(0,0,0), point3(165,165,165), white);
-    box2 = make_shared<rotate>(box2, 0, -18, 0);
-    box2 = make_shared<translate>(box2, vec3(130,0,65));
-    world.add(box2);
+    auto glass = make_shared<dielectric>(1.5,color(0.5,0.5,1.0));
+    world.add(make_shared<sphere>(point3(190,90,190), 90, glass));
+    lights.add(make_shared<sphere>(point3(190,90,190), 90, glass));
 
     camera cam;
 
     cam.aspect_ratio      = 1.0;
-    cam.image_width       = 1000;
-    cam.samples_per_pixel = 8000;
+    cam.image_width       = 600;
+    cam.samples_per_pixel = 1000;
     cam.max_depth         = 20;
     cam.background        = color(0,0,0);
 

@@ -6,14 +6,14 @@
 
 class sphere: public hittable{
   public:
-    sphere(const point3& center, double radius, std::shared_ptr<material> mat): 
-    	center(ray(center,vec3(0,0,0))), radius(std::fmax(0,radius)), mat(mat) {
+    sphere(const point3& center, double radius, shared_ptr<material> mat): 
+    	center(ray(center,vec3(0,0,0))), radius(std::max(0.,radius)), mat(mat) {
 			vec3 vecr(radius,radius,radius);
 			boundingbox=bounding_box(center-vecr,center+vecr);
             area=4*pi*radius*radius;
 		}
-	sphere(const point3& center0, const point3& center1, double radius, std::shared_ptr<material> mat):
-    	center(ray(center0,center1-center0)), radius(std::fmax(0,radius)), mat(mat) {
+	sphere(const point3& center0, const point3& center1, double radius, shared_ptr<material> mat):
+    	center(ray(center0,center1-center0)), radius(std::max(0.,radius)), mat(mat) {
 			vec3 vecr(radius,radius,radius);
 			boundingbox=bounding_box(bounding_box(center0-vecr,center0+vecr),
 									 bounding_box(center1-vecr,center1+vecr));
@@ -70,6 +70,19 @@ class sphere: public hittable{
         v=acos(-p.y())/pi;
         u=atan2(-p.z(),p.x())/(2*pi)+.5;
     }
+};
+
+class point: public hittable{
+  public:
+    point(const point3& P, shared_ptr<material> mat): P(P), S(make_shared<sphere>(P,1e-4,mat)){}
+
+    bool hit(const ray& r, const interval& ray_t, hit_record& rec)const override{return S->hit(r,ray_t,rec);}
+    bounding_box bbox()const override{return S->bbox();}
+    double sample_pdf(const ray& r)const override{S->sample_pdf(r);};
+    vec3 sample(const point3& origin, const double time)const override{return S->sample(origin,time);}
+  private:
+    point3 P;
+    shared_ptr<sphere> S;
 };
 
 #endif
