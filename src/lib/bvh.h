@@ -10,20 +10,38 @@
 class bvh_node: public hittable{
   public:
     bvh_node(hittable_list list): bvh_node(list.objects, 0, list.objects.size()){}
-    bvh_node(std::vector<std::shared_ptr<hittable> >& objects, size_t start, size_t end){
+    bvh_node(std::vector<std::shared_ptr<hittable> >& objects, int start, int end){
         boundingbox=bounding_box::empty;
-        for(size_t i=start;i<end;i++)
+        for(int i=start;i<end;i++)
             boundingbox=bounding_box(boundingbox,objects[i]->bbox());
         int division_dim=argmax(boundingbox.x.size(),boundingbox.y.size(),boundingbox.z.size());
         auto box_cmp=(division_dim==0?box_cmp_x:(division_dim==1?box_cmp_y:box_cmp_z));
-        size_t num_objects=end-start;
+        int num_objects=end-start;
         if(num_objects==1)lson=objects[start],rson=nullptr;
         else if(num_objects==2)lson=objects[start],rson=objects[start+1];
         else{
-            size_t mid=num_objects>>1;
-            std::nth_element(objects.begin()+start,objects.begin()+start+mid,objects.begin()+end,box_cmp);
-            lson=std::make_shared<bvh_node>(objects,start,start+mid);
-            rson=std::make_shared<bvh_node>(objects,start+mid,end);
+            std::sort(objects.begin()+start,objects.begin()+end,box_cmp);
+            double *prefix_surface_area = new double[num_objects];
+            double *suffix_surface_area = new double[num_objects];
+            bounding_box cur_bbox=bounding_box::empty;
+            for(int i=start;i<end;i++){
+                cur_bbox=bounding_box(cur_bbox,objects[i]->bbox());
+                prefix_surface_area[i-start]=cur_bbox.area();
+            }
+            cur_bbox=bounding_box::empty;
+            for(int i=end-1;i>=start;i--){
+                cur_bbox=bounding_box(cur_bbox,objects[i]->bbox());
+                suffix_surface_area[i-start]=cur_bbox.area();
+            }
+            int sep=num_objects/2;double cost=infty;
+            for(int i=1;i<num_objects-1;i++){
+                double new_cost=i*prefix_surface_area[i-1]+(num_objects-i)*suffix_surface_area[i];
+                if(new_cost<cost)cost=new_cost,sep=i;
+            }
+            delete[] prefix_surface_area;
+            delete[] suffix_surface_area;
+            lson=std::make_shared<bvh_node>(objects,start,start+sep);
+            rson=std::make_shared<bvh_node>(objects,start+sep,end);
         }
     }
     bool hit(const ray& r, const interval& ray_t, hit_record& rec)const override{

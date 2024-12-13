@@ -22,6 +22,8 @@ class bounding_box{
         pad();
     }
 
+    double area(){return std::max(2*(x.size()*(y.size()+z.size())+y.size()*z.size()),0.);}
+
     bounding_box translate(const vec3& v){
         return bounding_box(x.translate(v.x()), y.translate(v.y()), z.translate(v.z()));
     }

@@ -38,9 +38,9 @@ class directed_pdf: public pdf{
     point3 origin;
 };
 
-class mixture_pdf: public pdf{
+class mixed_pdf: public pdf{
   public:
-    mixture_pdf(const shared_ptr<pdf>& p0, const shared_ptr<pdf>& p1,const double lambda): 
+    mixed_pdf(const shared_ptr<pdf>& p0, const shared_ptr<pdf>& p1,const double lambda): 
         p0(p0), p1(p1), lambda(lambda){};
     double value(const vec3& v)const override{
         return lambda*p0->value(v)+(1-lambda)*p1->value(v);

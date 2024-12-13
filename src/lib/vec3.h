@@ -18,6 +18,7 @@ class vec3 {
     vec3 operator-()const{ return vec3(-e0,-e1,-e2); }
     double operator[](int i)const{ return i==0?e0:(i==1?e1:e2); }
     double& operator[](int i){ return i==0?e0:(i==1?e1:e2); }
+    bool operator==(const vec3 &v)const{ return e0==v.e0&&e1==v.e1&&e2==v.e2; }
 
     vec3& operator+=(const vec3 &v){ e0+=v.e0,e1+=v.e1,e2+=v.e2;return *this; }
     vec3& operator-=(const vec3 &v){ e0-=v.e0,e1-=v.e1,e2-=v.e2;return *this; }
