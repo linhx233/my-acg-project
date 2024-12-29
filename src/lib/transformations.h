@@ -24,6 +24,7 @@ class translate: public hittable{
     vec3 sample(const point3& origin, const double t)const override{
         return object->sample(origin-offset,t);
     }
+    const void* get_pointer()const override{return this;}
   private:
     shared_ptr<hittable> object;
     vec3 offset;
@@ -58,6 +59,7 @@ class rotate: public hittable{
         point3 rotated_origin=inv_rotation_matrix*(origin-center)+center;
         return rotation_matrix*object->sample(rotated_origin,time);
     }
+    const void* get_pointer()const override{return this;}
 
   private:
     shared_ptr<hittable> object;

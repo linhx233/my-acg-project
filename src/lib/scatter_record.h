@@ -3,13 +3,16 @@
 
 #include "common.h"
 #include "pdf.h"
+#include<functional>
+using std::function;
 
 class scatter_record{
   public:
-    color attenuation;
-    bool using_importance_sampling;
-    shared_ptr<pdf> sample_pdf;
-    ray sample_ray;
+	function<const color(const vec3&)> attenuation;
+	bool using_importance_sampling;
+	shared_ptr<pdf> sample_pdf;
+	ray sample_ray;
+	bool path_unchanged=0;
 };
 
 #endif

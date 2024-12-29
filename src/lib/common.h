@@ -19,8 +19,12 @@ inline double random_double(){ return (std::rand()/(RAND_MAX+1.)+std::rand())/(R
 inline double random_double(double min, double max){ return min+(max-min)*random_double();}
 
 inline double deg_to_rad(double x){ return x/180*pi;}
+inline double rad_to_deg(double x){ return x*180/pi;}
 
 inline double square(double x){ return x*x;}
+
+template<typename T>
+inline T make_safe(T x){ return x==x?x:T(0);}
 
 inline int argmax(int a,int b,int c){ return a>=b?(a>=c?0:2):(b>=c?1:2);}
 
@@ -42,6 +46,7 @@ T trilinear_interpolate(T a[2][2][2], double u, double v,double w){
 
 
 #include "vec3.h"
+#include "vec2.h"
 #include "color.h"
 #include "ray.h"
 #include "interval.h"

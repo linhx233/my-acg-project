@@ -13,6 +13,7 @@ class quad: public hittable{
         normal=normalize(cross(u,v));
         area=length(cross(u,v));
     }
+    const void* get_pointer()const override{return this;}
     vec3 norm(){return normal;}
     bool hit(const ray& r, const interval& ray_t, hit_record& rec)const override{
         mat3 A(-r.direction(),u,v);
@@ -24,7 +25,8 @@ class quad: public hittable{
         rec.p=r.at(rec.t);
         rec.set_normal(r,normal);
         rec.mat=mat;
-        rec.u=v[1],rec.v=v[2];
+        rec.tex_coord=point2(v[1],v[2]);
+        rec.obj=get_pointer();
         return 1;
     }
     bounding_box bbox()const override{ return boundingbox;}

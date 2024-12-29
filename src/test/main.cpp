@@ -9,6 +9,8 @@
 #include "quad.h"
 #include "make_box.h"
 #include "transformations.h"
+#include "mesh.h"
+#include "loader.h"
 
 void bouncing_spheres(){
     hittable_list scene, skybox;
@@ -71,9 +73,8 @@ void bouncing_spheres(){
     cam.defocus_angle = 0.6;
     cam.focus_dist    = 10.0;
 
-    cam.render(bvh_node(scene));
+    cam.render(make_shared<bvh_node>(scene));
 }
-
 void checkered_spheres() {
     hittable_list world;
 
@@ -97,7 +98,7 @@ void checkered_spheres() {
 
     cam.defocus_angle = 0;
 
-    cam.render(world);
+    cam.render(make_shared<hittable_list>(world));
 }
 void earth() {
     auto earth_texture = make_shared<image_texture>("../../images/earthmap.jpg");
@@ -119,9 +120,8 @@ void earth() {
 
     cam.defocus_angle = 0;
 
-    cam.render(hittable_list(globe));
+    cam.render(make_shared<hittable_list>(globe));
 }
-
 void perlin_spheres() {
     hittable_list world;
 
@@ -144,9 +144,8 @@ void perlin_spheres() {
 
     cam.defocus_angle = 0;
 
-    cam.render(world);
+    cam.render(make_shared<hittable_list>(world));
 }
-
 void quads() {
     hittable_list world;
 
@@ -179,9 +178,8 @@ void quads() {
 
     cam.defocus_angle = 0;
 
-    cam.render(world);
+    cam.render(make_shared<hittable_list>(world));
 }
-
 void simple_light() {
     hittable_list world;
 
@@ -208,18 +206,21 @@ void simple_light() {
 
     cam.defocus_angle = 0;
 
-    cam.render(world);
+    cam.render(make_shared<hittable_list>(world));
 }
-
 void cornell_box() {
     hittable_list world, lights;
 
     auto red   = make_shared<lambertian>(color(.65, .05, .05));
     auto white = make_shared<lambertian>(color(.73, .73, .73));
     auto green = make_shared<lambertian>(color(.12, .45, .15));
-    auto light = make_shared<diffuse_light>(color(15, 15, 15));
+    auto light = make_shared<diffuse_light>(color(20, 20, 20));
     auto blue  = make_shared<metal>(color(.75,.75,.95),0.03);
     auto yellow = make_shared<transparent>(make_shared<lambertian>(color(.9,.9,.3)),0.4);
+    auto cyan = make_shared<lambertian>(color(.3,.9,.9));
+    auto magenta = make_shared<metal>(color(.9,.3,.9),0.2);
+    auto floor_texture=make_shared<image_texture>("../images/floor_texture.jpg");
+    auto floor_surface=make_shared<lambertian>(floor_texture);
 
     auto blue_glass = make_shared<transparent>(blue,0.7);
     auto blue_glass2 = make_shared<transparent>(blue,0.3);
@@ -228,10 +229,26 @@ void cornell_box() {
     world.add(make_shared<quad>(point3(0,0,0), vec3(0,555,0), vec3(0,0,555), red));
     world.add(make_shared<quad>(point3(343, 554, 332), vec3(-130,0,0), vec3(0,0,-105), light));
     lights.add(make_shared<quad>(point3(343, 554, 332), vec3(-130,0,0), vec3(0,0,-105), light));
-    world.add(make_shared<quad>(point3(0,0,0), vec3(555,0,0), vec3(0,0,555), white));
+    world.add(make_shared<quad>(point3(0,0,0), vec3(555,0,0), vec3(0,0,555), floor_surface));
     world.add(make_shared<quad>(point3(555,555,555), vec3(-555,0,0), vec3(0,0,-555), white));
     world.add(make_shared<quad>(point3(0,0,555), vec3(555,0,0), vec3(0,555,0), blue_glass));
     world.add(make_shared<quad>(point3(0,0,0), vec3(555,0,0), vec3(0,555,0), blue_glass2));
+
+    vector<mesh_vertex> vertices;
+    vertices.push_back(mesh_vertex(point3(-69,0,40)));
+    vertices.push_back(mesh_vertex(point3(69,0,40)));
+    vertices.push_back(mesh_vertex(point3(0,0,-80)));
+    vertices.push_back(mesh_vertex(point3(0,113,0)));
+    vector<vec3i> faces;
+    faces.push_back(vec3i(0,1,2));
+    faces.push_back(vec3i(0,3,1));
+    faces.push_back(vec3i(0,2,3));
+    faces.push_back(vec3i(1,3,2));
+
+    shared_ptr<hittable> mesh1=make_shared<mesh>(vertices,faces,magenta);
+    mesh1=make_shared<rotate>(mesh1,0,-10,0);
+    mesh1=make_shared<translate>(mesh1,vec3(450,0,100));
+    world.add(mesh1);
     
     shared_ptr<hittable> box1 = make_box(point3(0,0,0), point3(165,330,165), white);
     box1 = make_shared<rotate>(box1, 0, 15, 0);
@@ -248,7 +265,7 @@ void cornell_box() {
     camera cam;
 
     cam.aspect_ratio      = 1.0;
-    cam.image_width       = 600;
+    cam.image_width       = 400;
     cam.samples_per_pixel = 100;
     cam.max_depth         = 30;
     cam.background        = color(0,0,0);
@@ -260,7 +277,17 @@ void cornell_box() {
 
     cam.defocus_angle = 0;
 
-    cam.render(bvh_node(world),lights);
+    cam.render(make_shared<bvh_node>(world),make_shared<hittable_list>(lights));
+}
+void assimp_test() {
+    scene sponza;
+    sponza.image_width=300;
+    sponza.samples_per_pixel=100;
+    sponza.max_depth=30;
+    sponza.loadModel("CornellBox/cornellbox.glb");
+    sponza.loadCamera("CornellBox/cornellbox.glb");
+
+    sponza.render(0);
 }
 
 int main(int argc, char **argv) {
@@ -291,6 +318,7 @@ int main(int argc, char **argv) {
         case 5: quads(); break;
         case 6: simple_light(); break;
         case 7: cornell_box(); break;
+        case 8: assimp_test(); break;
     }
     return 0;
 }

@@ -6,13 +6,10 @@
 #include "rtw_stb_image.h"
 #include "perlin.h"
 
-using std::shared_ptr;
-using std::make_shared;
-
 class texture{
   public:
     virtual ~texture()=default;
-    virtual color value(double u, double v, const point3& p)const=0;
+    virtual color value(const point2& tex_coord, const point3& p)const=0;
 };
 
 
@@ -21,7 +18,7 @@ class solid_color: public texture{
     solid_color(const color& albedo): albedo(albedo){}
     solid_color(double r, double g, double b): solid_color(color(r,g,b)){}
 
-    color value(double u, double v, const point3& p)const override{ return albedo;}
+    color value(const point2& tex_coord, const point3& p)const override{ return albedo;}
 
   private:
     color albedo;
@@ -34,9 +31,9 @@ class checker_texture: public texture{
     checker_texture(double scale, const color& c_even, const color& c_odd):
         checker_texture(scale, make_shared<solid_color>(solid_color(c_even)), make_shared<solid_color>(solid_color(c_odd))){}
     
-    color value(double u,double v, const point3& p)const override{
+    color value(const point2& tex_coord, const point3& p)const override{
         int xx=floor(p.x()*inv_scale),yy=floor(p.y()*inv_scale),zz=floor(p.z()*inv_scale);
-        return (xx+yy+zz)%2==0?texture_even->value(u,v,p):texture_odd->value(u,v,p);
+        return (xx+yy+zz)%2==0?texture_even->value(tex_coord,p):texture_odd->value(tex_coord,p);
     }
   private:
     double inv_scale;
@@ -46,10 +43,13 @@ class checker_texture: public texture{
 class image_texture: public texture{
   public:
     image_texture(const char* filename): image(filename){}
+    image_texture(const std::string filename): image(filename.c_str()){}
+	image_texture(const aiTexture* tex): image(tex){}
 	
-    color value(double u, double v, const point3& p)const override{
+    color value(const point2& tex_coord, const point3& p)const override{
         if(image.height()<=0)return color(0,1,1);
-		u=u>1?1:(u<0?0:u),v=v>1?1:(v<0?0:v);
+        double u=tex_coord.u,v=tex_coord.v;
+		    u=u>1?1:(u<0?0:u),v=v>1?1:(v<0?0:v);
         int i=u*image.width(),j=(1-v)*image.height();
         auto pixel=image.pixel_data(i,j);
         return color(pixel[0],pixel[1],pixel[2])/255;
@@ -62,7 +62,7 @@ class grey_noise_texture: public texture{
   public:
     grey_noise_texture(double freq): freq(freq){}
 
-    color value(double u, double v, const point3& p)const override{
+    color value(const point2& tex_coord, const point3& p)const override{
         return color(1,1,1)*(0.5+0.5*sin(freq*p.z()+10*noise.turb(p,7)));
     }
   private:

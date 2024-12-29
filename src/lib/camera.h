@@ -2,7 +2,7 @@
 #define CAMERA_H
 
 #include "common.h"
-#include "hittable.h"
+#include "hittable_list.h"
 #include "material.h"
 #include "pdf.h"
 #include "scatter_record.h"
@@ -48,7 +48,7 @@ class camera{
 		focus_dist(focus_dist),
 		defocus_angle(defocus_angle){}
 
-	void render(const hittable& scene, const hittable& lights=hittable_list()){
+	void render(const shared_ptr<hittable>& scene, const shared_ptr<hittable>& lights=make_shared<hittable_list>()){
 		init();
 		
 		std::cout<<"P3\n"<<image_width<<' '<<image_height <<"\n255\n";
@@ -140,56 +140,62 @@ class camera{
 		return center+x*defocus_u+y*defocus_v;
 	}
 	
-	color ray_color(const ray& r, const hittable& obj, const hittable& lights, const double p, const int depth){
+	color ray_color(const ray& r, const shared_ptr<hittable>& obj, const shared_ptr<hittable>& lights, const double p, const int depth){
 		if(depth<=0)return color(0,0,0);
 		hit_record rec;
-		if(!obj.hit(r,interval(err,infty),rec))return background;
+		if(!obj->hit(r,interval(err,infty),rec))return background;
 		scatter_record scatter;
 		ray scattered_ray;
 		color emitted=rec.mat->emit(r,rec);
-		if(depth==1)return emitted;
-		double bsdf;
+		vec3 bsdf;
 		if(!rec.mat->scatter(r,rec,scatter))return emitted;
 		if(!scatter.using_importance_sampling){
 			scattered_ray=scatter.sample_ray;
-			bool extra_bounce=(scattered_ray.direction()==r.direction());
-			return scatter.attenuation*ray_color(scattered_ray,obj,lights,p,depth-1+extra_bounce)+emitted;
+			bool extra_bounce=scatter.path_unchanged;
+			return make_safe(scatter.attenuation(scattered_ray.direction())
+				   *ray_color(scattered_ray,obj,lights,p,depth-1+extra_bounce))+emitted;
 		}
+		if(depth==1)return emitted;
 		auto light_pdf=make_shared<directed_pdf>(lights, rec.p);
 		auto surface_pdf=scatter.sample_pdf;
 		if(random_double()<=std::max(p,pow(depth,-1.66667))){//Russian Roulette
 			const int num_sample=5;
-			color accum(0,0,0);
+			color accum=emitted;
 			for(int T=0;T<num_sample;T++){
 				scattered_ray=ray(rec.p,light_pdf->sample(),r.time());
-				bsdf=rec.mat->bsdf(r,rec,scattered_ray);
-				accum+=bsdf*ray_color(scattered_ray,obj,lights,p,1)/num_sample;
+				double w_light=light_pdf->value(scattered_ray.direction());
+				if(w_light!=w_light)continue;
+				bsdf=make_safe(rec.mat->bsdf(r,rec,scattered_ray));
+				if(!(bsdf<=0))accum+=make_safe(scatter.attenuation(scattered_ray.direction())*bsdf
+					   			 	 *ray_color(scattered_ray,obj,lights,p,1)/(w_light*num_sample));
 			}
-			return scatter.attenuation*accum+emitted;
+			return accum;
 		}
 		//MIS with power-2 heuristic
 		const int num_sample_light=3;
 		double w_surface,w_light,w;
-		color accum(0,0,0);
+		color accum=emitted;
 		scattered_ray=ray(rec.p,surface_pdf->sample(),r.time());
 		bsdf=rec.mat->bsdf(r,rec,scattered_ray);
-		if(bsdf>=err){
+		if(!(bsdf<=0)){
 			w_surface=surface_pdf->value(scattered_ray.direction());
 			w_light=light_pdf->value(scattered_ray.direction());
 			w=square(w_surface)/(square(w_surface)+square(num_sample_light*w_light));
-			accum+=bsdf*w*ray_color(scattered_ray,obj,lights,p,depth-1)/w_surface;
+			accum+=make_safe(scatter.attenuation(scattered_ray.direction())*bsdf*w
+				   *ray_color(scattered_ray,obj,lights,p,depth-1)/w_surface);
 		}
 		for(int T=0;T<num_sample_light;T++){
 			scattered_ray=ray(rec.p,light_pdf->sample(),r.time());
 			bsdf=rec.mat->bsdf(r,rec,scattered_ray);
-			if(bsdf<err)continue;
-			w_light=light_pdf->value(scattered_ray.direction());
-			if(w_light<err)continue;
-			w_surface=surface_pdf->value(scattered_ray.direction());
-			w=square(num_sample_light*w_light)/(square(w_surface)+square(num_sample_light*w_light));
-			accum+=bsdf*w*ray_color(scattered_ray,obj,lights,p,1)/(w_light*num_sample_light);
+			if(!(bsdf<=0)){
+				w_light=light_pdf->value(scattered_ray.direction());
+				w_surface=surface_pdf->value(scattered_ray.direction());
+				w=square(num_sample_light*w_light)/(square(w_surface)+square(num_sample_light*w_light));
+				accum+=make_safe(scatter.attenuation(scattered_ray.direction())*bsdf*w
+					   *ray_color(scattered_ray,obj,lights,p,1)/(w_light*num_sample_light));
+			}
 		}
-		return scatter.attenuation*accum+emitted;
+		return accum;
 	}
 
 	color anti_aliasing(color* buffer, int row, int col, int pool_num){

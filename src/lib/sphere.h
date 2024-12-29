@@ -6,19 +6,20 @@
 
 class sphere: public hittable{
   public:
-    sphere(const point3& center, double radius, shared_ptr<material> mat): 
-    	center(ray(center,vec3(0,0,0))), radius(std::max(0.,radius)), mat(mat) {
-			vec3 vecr(radius,radius,radius);
-			boundingbox=bounding_box(center-vecr,center+vecr);
-            area=4*pi*radius*radius;
-		}
-	sphere(const point3& center0, const point3& center1, double radius, shared_ptr<material> mat):
-    	center(ray(center0,center1-center0)), radius(std::max(0.,radius)), mat(mat) {
-			vec3 vecr(radius,radius,radius);
-			boundingbox=bounding_box(bounding_box(center0-vecr,center0+vecr),
-									 bounding_box(center1-vecr,center1+vecr));
-		}
+    sphere(const point3& center, double radius, shared_ptr<material> mat)
+    	:center(ray(center,vec3(0,0,0))), radius(std::max(0.,radius)), mat(mat) {
+		vec3 vecr(radius,radius,radius);
+		boundingbox=bounding_box(center-vecr,center+vecr);
+        area=4*pi*radius*radius;
+	}
+	sphere(const point3& center0, const point3& center1, double radius, shared_ptr<material> mat)
+    	:center(ray(center0,center1-center0)), radius(std::max(0.,radius)), mat(mat) {
+		vec3 vecr(radius,radius,radius);
+		boundingbox=bounding_box(bounding_box(center0-vecr,center0+vecr),
+								 bounding_box(center1-vecr,center1+vecr));
+	}
 
+    const void* get_pointer()const override{return this;}
     inline vec3 normAt(const point3& p, double time)const{ return (p-center.at(time))/radius;}
     bool hit(const ray& r, const interval& ray_t, hit_record& rec)const override{
         vec3 oc=center.at(r.time())-r.origin();
@@ -39,8 +40,9 @@ class sphere: public hittable{
         rec.p=r.at(t);
 		vec3 outer_norm=normAt(rec.p,r.time());
         rec.set_normal(r,outer_norm);
-		get_sphere_uv(outer_norm,rec.u,rec.v);
+		get_sphere_uv(outer_norm,rec.tex_coord);
         rec.mat=mat;
+        rec.obj=this;
         return 1;
     }
 	bounding_box bbox()const override{ return boundingbox;}
@@ -66,19 +68,19 @@ class sphere: public hittable{
     std::shared_ptr<material> mat;
 	bounding_box boundingbox;
     double area;
-	static void get_sphere_uv(const point3& p, double& u, double& v) {
-        v=acos(-p.y())/pi;
-        u=atan2(-p.z(),p.x())/(2*pi)+.5;
+	static void get_sphere_uv(const point3& p, point2& tex_coord) {
+        tex_coord.v=acos(-p.y())/pi;
+        tex_coord.u=atan2(-p.z(),p.x())/(2*pi)+.5;
     }
 };
 
 class point: public hittable{
   public:
-    point(const point3& P, shared_ptr<material> mat): P(P), S(make_shared<sphere>(P,1e-4,mat)){}
+    point(const point3& P, shared_ptr<material> mat): P(P), S(make_shared<sphere>(P,1e-3,mat)){}
 
     bool hit(const ray& r, const interval& ray_t, hit_record& rec)const override{return S->hit(r,ray_t,rec);}
     bounding_box bbox()const override{return S->bbox();}
-    double sample_pdf(const ray& r)const override{S->sample_pdf(r);};
+    double sample_pdf(const ray& r)const override{return S->sample_pdf(r);};
     vec3 sample(const point3& origin, const double time)const override{return S->sample(origin,time);}
   private:
     point3 P;
